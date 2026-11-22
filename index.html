@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Document Question Answering System</title>
+
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+body { background: #f1f5f9; color: #1e293b; }
+header { background: linear-gradient(120deg, #064e3b, #059669); color: white; padding: 28px 8%; text-align: center; }
+header h1 { font-size: 30px; margin-bottom: 8px; }
+header p { color: #d1fae5; }
+.container { width: 90%; max-width: 1100px; margin: 30px auto; }
+.section { background: white; padding: 25px; margin-bottom: 22px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.06); }
+h2 { color: #047857; margin-bottom: 16px; font-size: 21px; }
+.description { color: #64748b; line-height: 1.6; margin-bottom: 15px; }
+.upload-box { border: 2px dashed #10b981; background: #ecfdf5; padding: 28px; text-align: center; border-radius: 12px; }
+input[type="file"] { margin: 15px; max-width: 100%; }
+button { border: none; padding: 11px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; background: #059669; color: white; transition: 0.3s; }
+button:hover { background: #047857; transform: translateY(-2px); }
+.secondary { background: #334155; }
+.secondary:hover { background: #1e293b; }
+input[type="text"] { width: 100%; padding: 14px; border: 1px solid #cbd5e1; border-radius: 9px; margin: 10px 0; font-size: 15px; outline: none; }
+input[type="text"]:focus { border-color: #059669; }
+.answer-box { margin-top: 18px; padding: 18px; background: #ecfdf5; border-left: 5px solid #059669; border-radius: 8px; display: none; line-height: 1.7; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 22px; }
+.stat-card { background: white; padding: 20px; text-align: center; border-radius: 12px; box-shadow: 0 3px 12px rgba(0,0,0,0.05); }
+.stat-card h3 { font-size: 27px; color: #059669; }
+.stat-card p { color: #64748b; margin-top: 5px; }
+table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+th, td { padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+th { background: #ecfdf5; color: #047857; }
+tr:hover { background: #f8fafc; }
+.badge { background: #d1fae5; color: #047857; padding: 5px 10px; border-radius: 20px; font-size: 12px; }
+.badge.fail { background: #fee2e2; color: #b91c1c; }
+footer { text-align: center; padding: 25px; background: #064e3b; color: white; margin-top: 35px; }
+.small { color: #64748b; font-size: 13px; margin-top: 10px; }
+@media(max-width: 650px) {
+    .stats { grid-template-columns: 1fr; }
+    header h1 { font-size: 23px; }
+    .section { padding: 18px; }
+    table { font-size: 12px; }
+    th, td { padding: 8px; }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>🤖 AI Document Question Answering System</h1>
+    <p>Knowledge Representation | Rule-Based Reasoning | Information Retrieval</p>
+</header>
+
+<div class="container">
+
+    <div class="section">
+        <h2>📄 Document Processing</h2>
+        <p class="description">
+            Upload a text document to extract information and automatically construct a
+            Knowledge Base. The document must contain one fact per line in the format:
+            Subject | Relation | Object.
+        </p>
+        <div class="upload-box">
+            <h3>Upload Your Document</h3>
+            <input type="file" id="fileInput" accept=".txt">
+            <br>
+            <button onclick="loadFile()">Upload & Process</button>
+            <button class="secondary" onclick="loadSample()">Load Sample Document</button>
+            <p class="small" id="uploadStatus">Upload a document or load the sample.</p>
+        </div>
+    </div>
+
+    <div class="stats">
+        <div class="stat-card"><h3 id="factCount">0</h3><p>Knowledge Base Facts</p></div>
+        <div class="stat-card"><h3 id="questionCount">0</h3><p>Questions Asked</p></div>
+        <div class="stat-card"><h3 id="accuracy">0%</h3><p>Test Accuracy</p></div>
+    </div>
+
+    <div class="section">
+        <h2>🧠 Knowledge Base</h2>
+        <p class="description">Extracted information is stored as Subject-Relation-Object triples.</p>
+        <table>
+            <thead><tr><th>Subject</th><th>Relation</th><th>Object</th></tr></thead>
+            <tbody id="knowledgeTable"><tr><td colspan="3">No facts loaded yet.</td></tr></tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>💬 Ask Your Question</h2>
+        <p class="description">
+            Enter a question related to the uploaded document. The system identifies the subject,
+            applies keyword rules to find the relation, and searches the Knowledge Base.
+        </p>
+        <input type="text" id="question" placeholder="Example: Where is the park located?">
+        <button onclick="askQuestion()">Get Answer</button>
+        <div class="answer-box" id="answerBox">
+            <strong>Generated Answer:</strong>
+            <p id="answerText"></p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>📊 System Evaluation</h2>
+        <p class="description">
+            Test the system using 14 predefined questions about the sample document
+            (12 answerable, 2 that must be refused).
+        </p>
+        <button onclick="runEvaluation()">Run Evaluation</button>
+        <div id="evaluationResult"></div>
+    </div>
+
+</div>
+
+<footer>
+    <p>AI-Based Document Question Answering System</p>
+    <p class="small" style="color:#d1fae5;">Developed using HTML, CSS and JavaScript</p>
+</footer>
+
+<script>
+
+// -----------------------------------
+// 1. KNOWLEDGE BASE AND SETTINGS
+// -----------------------------------
+
+let knowledgeBase = [];
+let questionCount = 0;
+let sampleLoaded = false;   // evaluation questions only make sense for the sample
+let mainSubject = null;     // most frequent subject = the topic of the document
+
+const sampleDocument = `
+Green Valley National Park | located_in | Karnataka
+Green Valley National Park | established_in | 1985
+Green Valley National Park | covers | 250 Square Kilometers
+Green Valley National Park | has | 45 Species of Mammals
+Green Valley National Park | opens_at | 6 AM
+Green Valley National Park | closes_at | 6 PM
+Green Valley National Park | famous_for | Wildlife and Forests
+Green Valley National Park | contains | Waterfalls
+Elephant | habitat | Forest
+Tiger | habitat | Dense Forest
+Peacock | habitat | Grassland
+Green Valley National Park | allows | Photography
+Green Valley National Park | prohibits | Plastic Bags
+`;
+
+// FIX 1: Rules are checked from top to bottom and the FIRST match wins.
+// Specific rules (open, close, habitat) must come BEFORE general ones
+// (where, when). In the original code "when" fired before "open"/"close"
+// and "where" fired before "habitat", which gave wrong answers.
+const RULES = [
+    { keywords: ["open"],                                  relation: "opens_at" },
+    { keywords: ["close"],                                 relation: "closes_at" },
+    { keywords: ["habitat", "live"],                       relation: "habitat" },
+    { keywords: ["where", "located"],                      relation: "located_in" },
+    { keywords: ["when", "established", "founded"],        relation: "established_in" },
+    { keywords: ["how large", "how big", "cover"],         relation: "covers" },
+    { keywords: ["how many", "species"],                   relation: "has" },
+    { keywords: ["famous"],                                relation: "famous_for" },
+    { keywords: ["waterfall"],                             relation: "contains" },
+    { keywords: ["photography", "allowed"],                relation: "allows" },
+    { keywords: ["plastic", "prohibit"],                   relation: "prohibits" }
+];
+
+// -----------------------------------
+// 2. SMALL HELPERS
+// -----------------------------------
+
+function escapeRegExp(text) {
+    return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// FIX 2: keywords must start at a word boundary, so "live" no longer
+// matches inside words such as "alive" or "deliver".
+function hasKeyword(text, keyword) {
+    return new RegExp("\\b" + escapeRegExp(keyword)).test(text);
+}
+
+function escapeHTML(value) {
+    return String(value).replace(/[&<>"']/g, char => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    })[char]);
+}
+
+function isRefusal(answer) {
+    return answer.startsWith("Sorry!") ||
+           answer.startsWith("The subject could not") ||
+           answer.startsWith("The question type");
+}
+
+// -----------------------------------
+// 3. DOCUMENT PROCESSING
+// -----------------------------------
+
+function findMainSubject() {
+    let counts = {};
+    knowledgeBase.forEach(f => { counts[f.subject] = (counts[f.subject] || 0) + 1; });
+    let best = null;
+    for (let subject in counts) {
+        if (best === null || counts[subject] > counts[best]) best = subject;
+    }
+    return best;
+}
+
+function processDocument(text) {
+
+    knowledgeBase = [];
+    let skipped = 0;
+
+    text.split(/\r?\n/).forEach(line => {
+
+        if (!line.trim()) return;                 // ignore blank lines
+
+        let parts = line.split("|");
+
+        if (parts.length === 3) {
+
+            let subject = parts[0].trim();
+            // FIX 3: "located in" and "located_in" are treated the same
+            let relation = parts[1].trim().toLowerCase().replace(/\s+/g, "_");
+            let object = parts[2].trim();
+
+            if (subject && relation && object) {
+                knowledgeBase.push({ subject, relation, object });
+                return;
+            }
+        }
+        skipped++;
+    });
+
+    mainSubject = findMainSubject();
+
+    displayKnowledgeBase();
+    document.getElementById("factCount").innerText = knowledgeBase.length;
+
+    // FIX 4: lines that cannot be read are reported instead of skipped silently
+    let message = knowledgeBase.length === 0
+        ? "No valid facts found. Use one fact per line: Subject | Relation | Object."
+        : "Document processed successfully! " + knowledgeBase.length + " facts stored.";
+
+    if (skipped > 0 && knowledgeBase.length > 0) {
+        message += " " + skipped + " line(s) skipped (expected: Subject | Relation | Object).";
+    }
+    document.getElementById("uploadStatus").innerText = message;
+}
+
+function loadSample() {
+    processDocument(sampleDocument);
+    sampleLoaded = true;
+    document.getElementById("uploadStatus").innerText =
+        "Green Valley National Park sample loaded successfully (" + knowledgeBase.length + " facts).";
+    resetEvaluation();
+}
+
+function loadFile() {
+
+    let file = document.getElementById("fileInput").files[0];
+
+    if (!file) {
+        alert("Please select a text document.");
+        return;
+    }
+
+    let reader = new FileReader();
+
+    reader.onload = function (event) {
+        processDocument(event.target.result);
+        sampleLoaded = false;
+        resetEvaluation();
+    };
+
+    reader.onerror = function () {
+        alert("Unable to read the selected document.");
+    };
+
+    reader.readAsText(file);
+}
+
+function displayKnowledgeBase() {
+
+    let table = document.getElementById("knowledgeTable");
+    table.innerHTML = "";
+
+    if (knowledgeBase.length === 0) {
+        table.innerHTML = "<tr><td colspan='3'>No valid facts found.</td></tr>";
+        return;
+    }
+
+    knowledgeBase.forEach(fact => {
+        let row = document.createElement("tr");
+        [fact.subject, fact.relation, fact.object].forEach(value => {
+            let cell = document.createElement("td");
+            cell.textContent = value;
+            row.appendChild(cell);
+        });
+        table.appendChild(row);
+    });
+}
+
+// -----------------------------------
+// 4. QUESTION PROCESSING
+// -----------------------------------
+
+function identifyRelation(question) {
+
+    let q = question.toLowerCase();
+
+    for (let rule of RULES) {
+        if (rule.keywords.some(word => hasKeyword(q, word))) {
+            return rule.relation;
+        }
+    }
+    return null;
+}
+
+function identifySubject(question) {
+
+    let q = question.toLowerCase();
+
+    // longest subject names first, so "Green Valley National Park" wins over shorter ones
+    let subjects = [...new Set(knowledgeBase.map(f => f.subject))];
+    subjects.sort((a, b) => b.length - a.length);
+
+    for (let subject of subjects) {
+        if (q.includes(subject.toLowerCase())) {
+            return subject;
+        }
+    }
+
+    // FIX 5: the old code had "park" and "Green Valley National Park" typed into
+    // the program. Now the main subject of ANY document is used when the question
+    // contains the last word of its name (e.g. "park" for "Green Valley National Park").
+    if (mainSubject) {
+        let lastWord = mainSubject.toLowerCase().split(/\s+/).pop();
+        if (hasKeyword(q, lastWord)) {
+            return mainSubject;
+        }
+    }
+
+    return null;
+}
+
+// -----------------------------------
+// 5. KNOWLEDGE BASE SEARCH
+// -----------------------------------
+
+function searchKnowledgeBase(subject, relation) {
+    return knowledgeBase.filter(fact =>
+        fact.subject.toLowerCase() === subject.toLowerCase() &&
+        fact.relation === relation
+    );
+}
+
+// -----------------------------------
+// 6. ANSWER GENERATION
+// -----------------------------------
+
+function generateAnswer(question) {
+
+    let subject = identifySubject(question);
+    let relation = identifyRelation(question);
+
+    if (!subject) {
+        return "The subject could not be identified. Please mention a topic available in the document.";
+    }
+
+    if (!relation) {
+        return "The question type is not supported by the current rule base.";
+    }
+
+    let results = searchKnowledgeBase(subject, relation);
+
+    if (results.length === 0) {
+        return "Sorry! The requested information is not available in the document.";
+    }
+
+    let objects = results.map(f => f.object).join(", ");
+
+    return subject + " " + relation.replaceAll("_", " ") + " " + objects + ".";
+}
+
+function askQuestion() {
+
+    let question = document.getElementById("question").value.trim();
+
+    if (!question) {
+        alert("Please enter a question.");
+        return;
+    }
+
+    if (knowledgeBase.length === 0) {
+        alert("Please upload a document first.");
+        return;
+    }
+
+    let answer = generateAnswer(question);
+
+    questionCount++;
+    document.getElementById("questionCount").innerText = questionCount;
+    document.getElementById("answerText").innerText = answer;
+    document.getElementById("answerBox").style.display = "block";
+}
+
+// -----------------------------------
+// 7. SYSTEM EVALUATION
+// -----------------------------------
+
+// expected: text that must appear in the answer,
+// or null when the system must REFUSE (information is not in the document)
+const TESTS = [
+    { question: "Where is Green Valley National Park located?",          expected: "Karnataka" },
+    { question: "When was Green Valley National Park established?",      expected: "1985" },
+    { question: "When does the park open?",                              expected: "6 AM" },
+    { question: "When does the park close?",                             expected: "6 PM" },
+    { question: "What is the park famous for?",                          expected: "Wildlife and Forests" },
+    { question: "How large is the park?",                                expected: "250 Square Kilometers" },
+    { question: "How many species of mammals does the park have?",       expected: "45 Species" },
+    { question: "Where does the Tiger live?",                            expected: "Dense Forest" },
+    { question: "Is photography allowed in the park?",                   expected: "Photography" },
+    { question: "What does Green Valley National Park prohibit?",        expected: "Plastic Bags" },
+    { question: "Does the park contain waterfalls?",                     expected: "Waterfalls" },
+    { question: "What is the habitat of the Elephant?",                  expected: "Forest" },
+    { question: "Who is the director of the park?",                      expected: null },
+    { question: "What is the entry fee?",                                expected: null }
+];
+
+function runEvaluation() {
+
+    // FIX 6: the test questions are about the sample document only
+    if (!sampleLoaded) {
+        document.getElementById("evaluationResult").innerHTML =
+            "<p class='description' style='margin-top:15px;'>The evaluation questions are written for the " +
+            "sample document. Click <b>Load Sample Document</b> first.</p>";
+        return;
+    }
+
+    let correct = 0;
+
+    let output = `
+        <table>
+        <thead>
+        <tr><th>Question</th><th>Expected</th><th>Generated Answer</th><th>Result</th></tr>
+        </thead>
+        <tbody>
+    `;
+
+    TESTS.forEach(test => {
+
+        let answer = generateAnswer(test.question);
+
+        let passed = test.expected === null
+            ? isRefusal(answer)
+            : answer.toLowerCase().includes(test.expected.toLowerCase());
+
+        if (passed) correct++;
+
+        output += `
+            <tr>
+                <td>${escapeHTML(test.question)}</td>
+                <td>${test.expected === null ? "Should be refused" : escapeHTML(test.expected)}</td>
+                <td>${escapeHTML(answer)}</td>
+                <td><span class="badge ${passed ? "" : "fail"}">${passed ? "PASS" : "FAIL"}</span></td>
+            </tr>
+        `;
+    });
+
+    output += "</tbody></table>";
+
+    let accuracyValue = (correct / TESTS.length) * 100;
+
+    document.getElementById("accuracy").innerText = accuracyValue.toFixed(0) + "%";
+
+    document.getElementById("evaluationResult").innerHTML =
+        output +
+        `<p style="margin-top:15px;color:#047857;font-weight:bold;">
+        Correct Answers: ${correct}/${TESTS.length} | Accuracy: ${accuracyValue.toFixed(0)}%
+        </p>`;
+}
+
+function resetEvaluation() {
+
+    questionCount = 0;
+
+    document.getElementById("questionCount").innerText = "0";
+    document.getElementById("accuracy").innerText = "0%";
+    document.getElementById("evaluationResult").innerHTML = "";
+    document.getElementById("answerBox").style.display = "none";
+}
+
+// FIX 7: pressing Enter in the question box asks the question
+document.getElementById("question").addEventListener("keydown", function (event) {
+    if (event.key === "Enter") askQuestion();
+});
+
+// Load sample when website opens
+loadSample();
+
+</script>
+
+</body>
+</html>
